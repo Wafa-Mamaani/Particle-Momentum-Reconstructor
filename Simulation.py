@@ -1,27 +1,41 @@
 import numpy as np
 import pandas as pd
 
-# first quick attempt to make fake detector hits
-# TODO: check the physics more carefully later
+# Still a toy simulation. Now trying to include magnetic bending.
+# Some constants are still hardcoded while the logic settles.
 
-def generate_tracks(n=1000):
-    np.random.seed(42)
+B_FIELD = 1.0
+MISSING_VALUE = -9999.0
 
-    layers = [0.40, 0.45, 0.50, 0.55, 0.60, 0.65]
+
+def generate_toy_tracks(num_samples, random_seed=42):
+    np.random.seed(random_seed)
+
+    layers = np.linspace(0.38, 0.70, 12)
+    pt_true = np.random.uniform(65.0, 105.0, num_samples)
+    alpha = np.random.uniform(0, 2 * np.pi, num_samples)
+    charge = np.random.choice([-1, 1], num_samples)
+
+    # pT is in MeV here, convert to GeV for the curvature expression
+    radius = (pt_true / 1000.0) / (0.3 * B_FIELD)
+
     rows = []
+    for j in range(num_samples):
+        row = {"pt_true": pt_true[j]}
+        phi_center = alpha[j] + charge[j] * np.pi / 2
 
-    for _ in range(n):
-        pt = np.random.uniform(60, 110)
-        angle = np.random.uniform(0, 2 * np.pi)
-        row = {"pt_true": pt}
-
-        # very rough placeholder: straight-ish hits with some noise
-        # not using magnetic field yet
         for i, r in enumerate(layers):
-            x = r * np.cos(angle) + np.random.normal(0, 0.002)
-            y = r * np.sin(angle) + np.random.normal(0, 0.002)
-            row[f"hit_{i}_x"] = x
-            row[f"hit_{i}_y"] = y
+            # curl before this detector layer
+            if r > 2 * radius[j]:
+                row[f"hit_{i}_x"] = MISSING_VALUE
+                row[f"hit_{i}_y"] = MISSING_VALUE
+                continue
+
+            beta = np.arccos(r / (2 * radius[j]))
+            theta_hit = phi_center - charge[j] * beta
+
+            row[f"hit_{i}_x"] = r * np.cos(theta_hit)
+            row[f"hit_{i}_y"] = r * np.sin(theta_hit)
 
         rows.append(row)
 
@@ -29,6 +43,6 @@ def generate_tracks(n=1000):
 
 
 if __name__ == "__main__":
-    df = generate_tracks(1000)
-    df.to_csv("tracks.csv", index=False)
-    print("saved tracks.csv")
+    data = generate_toy_tracks(1000)
+    data.to_csv("simulated_tracks.csv", index=False)
+    print("done")
