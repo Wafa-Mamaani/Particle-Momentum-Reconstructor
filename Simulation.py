@@ -1,30 +1,32 @@
+import argparse
+import os
+
 import numpy as np
 import pandas as pd
 
 MISSING_VALUE = -9999.0
+DEFAULT_LAYERS = np.linspace(0.385, 0.695, 36).tolist()
 
 
 def generate_toy_tracks(
     num_samples: int,
     b_field: float = 1.0,
-    layers=None,
+    layers: list = DEFAULT_LAYERS,
     efficiency: float = 0.95,
     resolution: float = 0.001,
     random_seed: int = 42,
 ) -> pd.DataFrame:
-    """Generate a rectangular toy dataset of particle hits."""
-    if layers is None:
-        layers = np.linspace(0.385, 0.695, 36)
+    """Simulate toy charged-particle tracks in a simple detector geometry."""
+    if num_samples <= 0:
+        raise ValueError("num_samples should be positive")
 
-    # TODO: change this to default_rng later
-    np.random.seed(random_seed)
-
+    rng = np.random.default_rng(random_seed)
     r_layers = np.array(layers)
     num_layers = len(r_layers)
 
-    pt_true = np.random.uniform(65.0, 105.0, num_samples)
-    alpha = np.random.uniform(0, 2 * np.pi, num_samples)
-    charge = np.random.choice([-1, 1], num_samples)
+    pt_true = rng.uniform(65.0, 105.0, num_samples)
+    alpha = rng.uniform(0, 2 * np.pi, num_samples)
+    charge = rng.choice([-1, 1], num_samples)
 
     radius = (pt_true / 1000) / (0.3 * b_field)
     phi_center = alpha + charge * (np.pi / 2)
@@ -32,32 +34,49 @@ def generate_toy_tracks(
     x_hits = np.full((num_samples, num_layers), MISSING_VALUE)
     y_hits = np.full((num_samples, num_layers), MISSING_VALUE)
 
-    for i, r_i in enumerate(r_layers):
-        valid = r_i <= (2 * radius)
-        valid_ids = np.where(valid)[0]
+    for layer_index, layer_radius in enumerate(r_layers):
+        valid_geometry_mask = layer_radius <= (2 * radius)
+        beta = np.arccos(layer_radius / (2 * radius[valid_geometry_mask]))
+        theta_hit = phi_center[valid_geometry_mask] - charge[valid_geometry_mask] * beta
 
-        beta = np.arccos(r_i / (2 * radius[valid]))
-        theta_hit = phi_center[valid] - charge[valid] * beta
+        x_true = layer_radius * np.cos(theta_hit)
+        y_true = layer_radius * np.sin(theta_hit)
 
-        x_true = r_i * np.cos(theta_hit)
-        y_true = r_i * np.sin(theta_hit)
+        hit_recorded_mask = rng.random(np.sum(valid_geometry_mask)) < efficiency
+        global_indices = np.where(valid_geometry_mask)[0][hit_recorded_mask]
 
-        # add simple detector inefficiency and measurement noise
-        keep = np.random.random(len(valid_ids)) < efficiency
-        kept_ids = valid_ids[keep]
+        x_hits[global_indices, layer_index] = x_true[hit_recorded_mask] + rng.normal(
+            0, resolution, np.sum(hit_recorded_mask)
+        )
+        y_hits[global_indices, layer_index] = y_true[hit_recorded_mask] + rng.normal(
+            0, resolution, np.sum(hit_recorded_mask)
+        )
 
-        x_hits[kept_ids, i] = x_true[keep] + np.random.normal(0, resolution, np.sum(keep))
-        y_hits[kept_ids, i] = y_true[keep] + np.random.normal(0, resolution, np.sum(keep))
-
-    df = pd.DataFrame({"pt_true": pt_true})
+    columns = ["pt_true"]
+    arrays = [pt_true.reshape(-1, 1)]
     for i in range(num_layers):
-        # not the most efficient way, but readable enough for now
-        df[f"hit_{i}_x"] = x_hits[:, i]
-        df[f"hit_{i}_y"] = y_hits[:, i]
+        columns.extend([f"hit_{i}_x", f"hit_{i}_y"])
+        arrays.append(x_hits[:, i].reshape(-1, 1))
+        arrays.append(y_hits[:, i].reshape(-1, 1))
 
-    return df
+    return pd.DataFrame(np.hstack(arrays), columns=columns)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate toy tracking data.")
+    parser.add_argument("--samples", type=int, default=10000)
+    parser.add_argument("--seed", type=int, default=13)
+    parser.add_argument("--outdir", type=str, default="data_files/simulated_data")
+    args = parser.parse_args()
+
+    os.makedirs(args.outdir, exist_ok=True)
+    output_path = os.path.join(args.outdir, "simulated_tracks.csv")
+
+    print(f"Generating {args.samples} tracks")
+    df = generate_toy_tracks(num_samples=args.samples, random_seed=args.seed)
+    df.to_csv(output_path, index=False)
+    print(f"Saved to {output_path}")
 
 
 if __name__ == "__main__":
-    df = generate_toy_tracks(10000, random_seed=13)
-    df.to_csv("simulated_tracks.csv", index=False)
+    main()
