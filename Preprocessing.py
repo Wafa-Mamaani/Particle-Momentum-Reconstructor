@@ -1,58 +1,88 @@
 import os
+import argparse
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-PAD_VAL = -9999.0
+
+class TrackPreprocessor:
+    def __init__(self, filepath, pad_val=-9999.0, random_state=13):
+        self.filepath = filepath
+        self.pad_val = pad_val
+        self.random_state = random_state
+        self.x_mean = None
+        self.x_std = None
+        self.y_mean = None
+        self.y_std = None
+
+    def load_and_split(self):
+        df = pd.read_csv(self.filepath)
+        y = df['pt_true'].values.reshape(-1, 1)
+        X = df.drop(columns=['pt_true']).values
+
+        X_train, X_temp, y_train, y_temp = train_test_split(
+            X, y, test_size=0.25, random_state=self.random_state
+        )
+        X_val, X_test, y_val, y_test = train_test_split(
+            X_temp, y_temp, test_size=0.5, random_state=self.random_state
+        )
+        return {
+            'X_train': X_train, 'y_train': y_train,
+            'X_val': X_val, 'y_val': y_val,
+            'X_test': X_test, 'y_test': y_test,
+        }
+
+    def fit(self, X_train, y_train):
+        self.x_mean = np.zeros(X_train.shape[1])
+        self.x_std = np.ones(X_train.shape[1])
+        valid_mask = X_train != self.pad_val
+
+        for col_idx in range(X_train.shape[1]):
+            vals = X_train[:, col_idx][valid_mask[:, col_idx]]
+            if len(vals) > 0:
+                self.x_mean[col_idx] = vals.mean()
+                std = vals.std()
+                self.x_std[col_idx] = std if std > 0 else 1.0
+
+        self.y_mean = y_train.mean()
+        self.y_std = y_train.std()
+
+    def transform(self, X, y):
+        X_scaled = X.copy()
+        valid_mask = X != self.pad_val
+        for col_idx in range(X.shape[1]):
+            mask = valid_mask[:, col_idx]
+            X_scaled[mask, col_idx] = (X[mask, col_idx] - self.x_mean[col_idx]) / self.x_std[col_idx]
+        y_scaled = (y - self.y_mean) / self.y_std
+        return X_scaled, y_scaled
+
+    def save_tensors(self, data_dict, outdir):
+        os.makedirs(outdir, exist_ok=True)
+        for name, array in data_dict.items():
+            np.save(os.path.join(outdir, f'{name}.npy'), array)
+        np.savez(os.path.join(outdir, 'y_stats.npz'), y_mean=self.y_mean, y_std=self.y_std)
+
+    def run_pipeline(self, outdir):
+        splits = self.load_and_split()
+        self.fit(splits['X_train'], splits['y_train'])
+        for split in ['train', 'val', 'test']:
+            X_key = f'X_{split}'
+            y_key = f'y_{split}'
+            splits[X_key], splits[y_key] = self.transform(splits[X_key], splits[y_key])
+        self.save_tensors(splits, outdir)
 
 
-def load_and_split(filepath, seed=13):
-    df = pd.read_csv(filepath)
-    y = df['pt_true'].values.reshape(-1, 1)
-    X = df.drop(columns=['pt_true']).values
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', default='data_files/simulated_data/simulated_tracks.csv')
+    parser.add_argument('--outdir', default='data_files/processed_data')
+    parser.add_argument('--seed', type=int, default=13)
+    args = parser.parse_args()
 
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=0.25, random_state=seed
-    )
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.5, random_state=seed
-    )
-    return X_train, y_train, X_val, y_val, X_test, y_test
-
-
-def fit_scalers(X_train, y_train, pad_val=PAD_VAL):
-    x_mean = np.zeros(X_train.shape[1])
-    x_std = np.ones(X_train.shape[1])
-
-    # now ignore missing hit padding values when fitting feature stats
-    for j in range(X_train.shape[1]):
-        valid_values = X_train[:, j][X_train[:, j] != pad_val]
-        if len(valid_values):
-            x_mean[j] = valid_values.mean()
-            std = valid_values.std()
-            x_std[j] = std if std > 0 else 1.0
-
-    y_mean = y_train.mean()
-    y_std = y_train.std()
-    return x_mean, x_std, y_mean, y_std
-
-
-def transform(X, y, x_mean, x_std, y_mean, y_std, pad_val=PAD_VAL):
-    X_scaled = X.copy()
-    for j in range(X.shape[1]):
-        mask = X[:, j] != pad_val
-        X_scaled[mask, j] = (X[mask, j] - x_mean[j]) / x_std[j]
-    y_scaled = (y - y_mean) / y_std
-    return X_scaled, y_scaled
+    processor = TrackPreprocessor(args.input, random_state=args.seed)
+    processor.run_pipeline(args.outdir)
+    print('saved processed data to', args.outdir)
 
 
 if __name__ == '__main__':
-    input_file = 'data_files/simulated_data/simulated_tracks.csv'
-    X_train, y_train, X_val, y_val, X_test, y_test = load_and_split(input_file)
-    x_mean, x_std, y_mean, y_std = fit_scalers(X_train, y_train)
-
-    X_train, y_train = transform(X_train, y_train, x_mean, x_std, y_mean, y_std)
-    X_val, y_val = transform(X_val, y_val, x_mean, x_std, y_mean, y_std)
-    X_test, y_test = transform(X_test, y_test, x_mean, x_std, y_mean, y_std)
-
-    print(X_train.shape, X_val.shape, X_test.shape)
+    main()
