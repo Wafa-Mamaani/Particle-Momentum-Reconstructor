@@ -9,25 +9,37 @@ from model import TrackMomentumRegressor
 
 
 class TrackDataset(Dataset):
-    def __init__(self, features_path, targets_path):
-        self.X = torch.tensor(np.load(features_path), dtype=torch.float32)
-        self.y = torch.tensor(np.load(targets_path), dtype=torch.float32)
+    def __init__(self, features_path: str, targets_path: str):
+        try:
+            self.X = torch.tensor(np.load(features_path), dtype=torch.float32)
+            self.y = torch.tensor(np.load(targets_path), dtype=torch.float32)
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"Could not locate {features_path} or {targets_path}. Run preprocessing.py first."
+            )
 
         if self.X.shape[0] != self.y.shape[0]:
             raise ValueError("Feature and target arrays must have the same number of rows.")
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.X.shape[0]
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple:
         return self.X[idx], self.y[idx]
 
 
-def train_model(data_dir="data_files/processed_data", weights_dir="weights", epochs=100, batch_size=64, lr=0.001):
+def train_model(
+    data_dir: str = "data_files/processed_data",
+    weights_dir: str = "weights",
+    epochs: int = 100,
+    batch_size: int = 64,
+    lr: float = 0.001,
+    patience: int = 10
+):
     os.makedirs(weights_dir, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Training on {device}")
+    print(f"Training initialized on device: {device}")
 
     train_dataset = TrackDataset(os.path.join(data_dir, "X_train.npy"), os.path.join(data_dir, "y_train.npy"))
     val_dataset = TrackDataset(os.path.join(data_dir, "X_val.npy"), os.path.join(data_dir, "y_val.npy"))
@@ -38,6 +50,10 @@ def train_model(data_dir="data_files/processed_data", weights_dir="weights", epo
     model = TrackMomentumRegressor(input_dim=72, pad_val=-9999.0).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    best_val_loss = float("inf")
+    epochs_without_improvement = 0
+    save_path = os.path.join(weights_dir, "best_model.pth")
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -71,7 +87,16 @@ def train_model(data_dir="data_files/processed_data", weights_dir="weights", epo
         val_loss /= len(val_loader.dataset)
         print(f"Epoch {epoch:03d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
 
-    torch.save(model.state_dict(), os.path.join(weights_dir, "model.pth"))
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            epochs_without_improvement = 0
+            torch.save(model.state_dict(), save_path)
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= patience:
+                print(f"Early stopping triggered after {patience} epochs without improvement.")
+                print(f"Best model weights saved to {save_path}")
+                break
 
 
 if __name__ == "__main__":
