@@ -1,0 +1,15 @@
+#Set default behavior to automatically normalize line endings
+* text=auto
+
+#Force LF (Line Feed) for all source code and text files to ensure cross-platform execution
+*.py text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+#Explicitly mark data formats as binary so Git doesn't try to diff them if accidentally forced
+*.npy binary
+*.npz binary
+*.pth binary
+*.png binary

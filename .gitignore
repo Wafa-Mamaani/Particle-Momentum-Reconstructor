@@ -1,0 +1,45 @@
+#=========================
+#Project-Specific Exclusions
+#=========================
+#Do not track data, weights, or generated plots per exam rubric, although I have put one batch just as a backup plan and demo.
+data/
+weights/
+results/
+*.csv
+*.npy
+*.npz
+*.pth
+*.png
+
+#=========================
+#Testing & Coverage
+#=========================
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+#=========================
+#Python Artifacts
+#=========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+#=========================
+#Environments
+#=========================
+.env
+.venv
+env/
+venv/
+
+#=========================
+#IDEs and OS Files
+#=========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
