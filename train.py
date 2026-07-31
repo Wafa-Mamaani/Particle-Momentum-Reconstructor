@@ -173,18 +173,18 @@ def main():
 
     args = parser.parse_args()
 
-    try:
-        train_model(
-            data_dir = args.data,
-            weights_dir = args.weights,
-            epochs = args.epochs,
-            batch_size = args.batch,
-            lr = args.lr,
-            patience=args.patience,
-            seed=args.seed,
-        )
-    except Exception as e:
-        print(f'Training failed: {e}')
+   try:
+    train_model(
+        data_dir=args.data,
+        weights_dir=args.weights,
+        epochs=args.epochs,
+        batch_size=args.batch,
+        lr=args.lr,
+        patience=args.patience,
+        seed=args.seed,
+    )
+except (FileNotFoundError, ValueError) as exc:
+    raise SystemExit(f'Training failed: {exc}') from exc
         
 
 if __name__ == '__main__':
