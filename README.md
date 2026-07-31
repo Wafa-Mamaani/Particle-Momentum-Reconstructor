@@ -78,7 +78,7 @@ python simulation.py --samples 50000 --seed 13
 ```
 Next, we prepare the data for the neural network. This script isolates the training statistics to ensure zero information leakage to the test set.
 ```bash
-python preprocessing.py --input data/simulated_tracks.csv
+python preprocessing.py --input data_files/simulated_data/simulated_tracks.csv
 ```
 
 ### Training
