@@ -53,7 +53,8 @@ For the pipeline to run seamlessly, it is required to have Python 3.8+ installed
 
 To begine, the user must clone this repository:
 ```bash
-git clone https://github.com/Wafa-Mamaani/Momentum_Reconstruction
+git clone https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor.git
+cd Particle-Momentum-Reconstructor
 ```
 
 Aside from Python, it's recommended to create a conda environment to stage the packages and modules of this project.
