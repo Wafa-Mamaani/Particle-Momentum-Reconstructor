@@ -43,28 +43,36 @@ The project is organized into decoupled modules to satisfy the "bus test" of sof
 ├── train.py                    # PyTorch training engine with Early Stopping
 ├── predict.py                  # Inference and physical unit restoration
 ├── plot.py                     # Final visualization and residual analysis
-├── PACKAGE_DEPENDENCIES.txt    # Dependency list
+├── requirements.txt            # Runtime dependencies
+├── requirements-dev.txt        # Testing and coverage dependencies
 └── README.md                   # Project documentation
 ```
 
 ## Installation
-For the pipeline to run seamlessly, it is required to have Python 3.8+ installed on your machine.
 
+This project was tested with Python 3.12.2. Using a virtual environment is recommended to keep the project dependencies separate from other Python installations.
 
-To begine, the user must clone this repository:
+Clone the repository and enter the project directory:
+
 ```bash
 git clone https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor.git
 cd Particle-Momentum-Reconstructor
 ```
 
-Aside from Python, it's recommended to create a conda environment to stage the packages and modules of this project.
-This project depends on the Pytorch ML framework, aside from a couple of other well-established scientific packages. 
-To install them in your conda env it's convinient to run the following:
+Install the packages required to run the simulation, preprocessing, training, prediction, and evaluation pipeline:
+
 ```bash
-pip install -r PACKAGE_DEPENDENCIES.txt
+python -m pip install -r requirements.txt
 ```
 
-Please be warned that PyTorch is quite OS specific; thus, you may want to recheck proper GPU installation guides and commands at the offcial website: 
+To run the test suite and coverage checks, install the development dependencies instead:
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+PyTorch installation may depend on the operating system and whether GPU support is required. For platform-specific installation instructions, consult the official PyTorch installation guide:
+
 https://pytorch.org/get-started/locally/
 
 ## Tutorial
