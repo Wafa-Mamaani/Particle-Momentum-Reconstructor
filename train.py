@@ -1,5 +1,7 @@
 import os
 import argparse
+import random
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -8,6 +10,17 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
 from model import TrackMomentumRegressor
+
+
+def set_random_seed(seed: int) -> None:
+    """Set the random seeds used during model training."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        
 
 class TrackDataset(Dataset):
     '''
@@ -33,16 +46,20 @@ class TrackDataset(Dataset):
 
 
 def train_model(
-    data_dir: str, 
-    weights_dir: str, 
-    epochs: int = 100, 
-    batch_size: int = 64, 
-    lr: float = 0.001, 
-    patience: int = 10):
+    data_dir: str,
+    weights_dir: str,
+    epochs: int = 100,
+    batch_size: int = 64,
+    lr: float = 0.001,
+    patience: int = 10,
+    seed: int = 13,
+):
     '''
     Executes the manual gradient descent and validation loops.
     Includes explicit early stopping and state saving.
     '''
+    set_random_seed(seed)
+    
     os.makedirs(weights_dir, exist_ok = True)
 
     #1. Hardware Selection
@@ -53,9 +70,22 @@ def train_model(
     train_dataset = TrackDataset(os.path.join(data_dir, 'X_train.npy'), os.path.join(data_dir, 'y_train.npy'))
     val_dataset = TrackDataset(os.path.join(data_dir, 'X_val.npy'), os.path.join(data_dir, 'y_val.npy'))
 
-    #The DataLoader handles the batching. We shuffle the training data to prevent the model from learning the sequential order of the generated tracks.
-    train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
-    val_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
+    # The DataLoader handles batching and reproducible shuffling.
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        generator=generator,
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+    )
 
     #3. Model, Loss, and Optimizer Initialization
     model = TrackMomentumRegressor(input_dim = 72, pad_val = -9999.0).to(device)
@@ -123,6 +153,7 @@ def train_model(
                 print(f'\nEarly stopping triggered. Validation loss hasn\'t improved in {patience} epochs.')
                 print(f'Best model weights saved to {save_path}')
                 break
+                
 
 def main():
     '''Command line interface for the PyTorch training loop.'''
@@ -133,6 +164,12 @@ def main():
     parser.add_argument('--batch', type = int, default = 64, help = 'Batch size for the DataLoader.')
     parser.add_argument('--lr', type = float, default = 0.001, help = 'Learning rate for the Adam optimizer.')
     parser.add_argument('--patience', type = int, default = 15, help = 'Epochs to wait for val loss improvement before stopping.')
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=13,
+        help='Random seed for reproducible model training.',
+    )   
 
     args = parser.parse_args()
 
@@ -143,10 +180,12 @@ def main():
             epochs = args.epochs,
             batch_size = args.batch,
             lr = args.lr,
-            patience = args.patience
+            patience=args.patience,
+            seed=args.seed,
         )
     except Exception as e:
         print(f'Training failed: {e}')
+        
 
 if __name__ == '__main__':
     main()
