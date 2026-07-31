@@ -126,8 +126,8 @@ def main(): #pragma: no cover
     
     try:
         processor.run_pipeline(args.outdir)
-    except Exception as e:
-        print(f'Error during preprocessing: {e}')
+    except (FileNotFoundError, ValueError, RuntimeError) as exc:
+        raise SystemExit(f'Preprocessing failed: {exc}') from exc
 
 if __name__ == '__main__': #pragma: no cover
     main()
