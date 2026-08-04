@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 import torch
 
-from train import TrackDataset
+from model import TrackMomentumRegressor
+from train import TrackDataset, train_model
 
 
 def test_track_dataset_loads_features_and_targets(tmp_path):
@@ -77,3 +78,49 @@ def test_track_dataset_reports_missing_files(tmp_path):
             tmp_path / 'missing_X.npy',
             tmp_path / 'missing_y.npy',
         )
+
+
+def test_train_model_creates_valid_checkpoint(tmp_path):
+    """Check that a short training run creates loadable model weights."""
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    data_dir.mkdir()
+
+    rng = np.random.default_rng(13)
+
+    X_train = rng.normal(size=(12, 72)).astype(np.float32)
+    y_train = rng.normal(size=(12, 1)).astype(np.float32)
+    X_val = rng.normal(size=(4, 72)).astype(np.float32)
+    y_val = rng.normal(size=(4, 1)).astype(np.float32)
+
+    np.save(data_dir / 'X_train.npy', X_train)
+    np.save(data_dir / 'y_train.npy', y_train)
+    np.save(data_dir / 'X_val.npy', X_val)
+    np.save(data_dir / 'y_val.npy', y_val)
+
+    train_model(
+        data_dir=str(data_dir),
+        weights_dir=str(weights_dir),
+        epochs=1,
+        batch_size=4,
+        lr=0.001,
+        patience=1,
+        seed=13,
+    )
+
+    checkpoint_path = weights_dir / 'best_model.pth'
+
+    assert checkpoint_path.exists()
+    assert checkpoint_path.stat().st_size > 0
+
+    state_dict = torch.load(
+        checkpoint_path,
+        map_location='cpu',
+        weights_only=True,
+    )
+
+    model = TrackMomentumRegressor(
+        input_dim=72,
+        pad_val=-9999.0,
+    )
+    model.load_state_dict(state_dict)
