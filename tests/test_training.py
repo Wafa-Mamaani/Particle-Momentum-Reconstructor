@@ -124,3 +124,66 @@ def test_train_model_creates_valid_checkpoint(tmp_path):
         pad_val=-9999.0,
     )
     model.load_state_dict(state_dict)
+
+
+def test_train_model_is_reproducible_with_same_seed(
+    tmp_path,
+    monkeypatch,
+):
+    """Check that identical seeds produce identical trained weights."""
+    # Force CPU execution so the test behaves consistently on every machine.
+    monkeypatch.setattr(torch.cuda, 'is_available', lambda: False)
+
+    data_dir = tmp_path / 'processed_data'
+    first_weights_dir = tmp_path / 'weights_run_1'
+    second_weights_dir = tmp_path / 'weights_run_2'
+    data_dir.mkdir()
+
+    rng = np.random.default_rng(13)
+
+    X_train = rng.normal(size=(12, 72)).astype(np.float32)
+    y_train = rng.normal(size=(12, 1)).astype(np.float32)
+    X_val = rng.normal(size=(4, 72)).astype(np.float32)
+    y_val = rng.normal(size=(4, 1)).astype(np.float32)
+
+    np.save(data_dir / 'X_train.npy', X_train)
+    np.save(data_dir / 'y_train.npy', y_train)
+    np.save(data_dir / 'X_val.npy', X_val)
+    np.save(data_dir / 'y_val.npy', y_val)
+
+    common_arguments = {
+        'data_dir': str(data_dir),
+        'epochs': 1,
+        'batch_size': 4,
+        'lr': 0.001,
+        'patience': 1,
+        'seed': 13,
+    }
+
+    train_model(
+        weights_dir=str(first_weights_dir),
+        **common_arguments,
+    )
+    train_model(
+        weights_dir=str(second_weights_dir),
+        **common_arguments,
+    )
+
+    first_state_dict = torch.load(
+        first_weights_dir / 'best_model.pth',
+        map_location='cpu',
+        weights_only=True,
+    )
+    second_state_dict = torch.load(
+        second_weights_dir / 'best_model.pth',
+        map_location='cpu',
+        weights_only=True,
+    )
+
+    assert list(first_state_dict) == list(second_state_dict)
+
+    for parameter_name in first_state_dict:
+        assert torch.equal(
+            first_state_dict[parameter_name],
+            second_state_dict[parameter_name],
+        ), f'Different values found in {parameter_name}'
