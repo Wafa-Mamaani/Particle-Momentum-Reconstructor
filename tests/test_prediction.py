@@ -100,3 +100,40 @@ def test_run_inference_reports_missing_processed_data(
             weights_path=str(weights_path),
             output_dir=str(output_dir),
         )
+
+
+def test_run_inference_reports_missing_model_weights(
+    tmp_path,
+    monkeypatch,
+):
+    """Check that a missing model checkpoint produces a clear error."""
+    monkeypatch.setattr(torch.cuda, 'is_available', lambda: False)
+
+    data_dir = tmp_path / 'processed_data'
+    output_dir = tmp_path / 'results'
+    missing_weights_path = tmp_path / 'missing_model.pth'
+    data_dir.mkdir()
+
+    np.save(
+        data_dir / 'X_test.npy',
+        np.zeros((1, 72), dtype=np.float32),
+    )
+    np.save(
+        data_dir / 'y_test.npy',
+        np.zeros((1, 1), dtype=np.float32),
+    )
+    np.savez(
+        data_dir / 'y_stats.npz',
+        y_mean=np.array(85.0, dtype=np.float32),
+        y_std=np.array(2.0, dtype=np.float32),
+    )
+
+    with pytest.raises(
+        FileNotFoundError,
+        match='Model weights not found',
+    ):
+        run_inference(
+            data_dir=str(data_dir),
+            weights_path=str(missing_weights_path),
+            output_dir=str(output_dir),
+        )

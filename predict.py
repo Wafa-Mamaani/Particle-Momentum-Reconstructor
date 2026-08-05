@@ -22,10 +22,28 @@ def run_inference(data_dir: str, weights_path: str, output_dir: str):
         y_mean = stats["y_mean"]
         y_std = stats["y_std"]
     except FileNotFoundError as exc:
-        raise FileNotFoundError(f"Missing processed data or stats. Run preprocessing first. Details: {exc}")
+        raise FileNotFoundError(
+            "Missing processed data or stats. "
+            f"Run preprocessing first. Details: {exc}"
+        ) from exc
 
-    model = TrackMomentumRegressor(input_dim=72, pad_val=-9999.0).to(device)
-    model.load_state_dict(torch.load(weights_path, map_location=device))
+    if not os.path.isfile(weights_path):
+        raise FileNotFoundError(
+            f"Model weights not found at {weights_path}. "
+            "Run train.py first."
+        )
+
+    model = TrackMomentumRegressor(
+        input_dim=72,
+        pad_val=-9999.0,
+    ).to(device)
+
+    state_dict = torch.load(
+        weights_path,
+        map_location=device,
+        weights_only=True,
+    )
+    model.load_state_dict(state_dict)
     model.eval()
 
     with torch.no_grad():
