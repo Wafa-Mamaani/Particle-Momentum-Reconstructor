@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 
 from model import TrackMomentumRegressor
@@ -77,3 +78,25 @@ def test_run_inference_restores_physical_units(
         results['pt_pred_mev'].to_numpy(),
         np.array([85.0, 85.0, 85.0]),
     )
+
+
+def test_run_inference_reports_missing_processed_data(
+    tmp_path,
+    monkeypatch,
+):
+    """Check that missing processed files produce a clear error."""
+    monkeypatch.setattr(torch.cuda, 'is_available', lambda: False)
+
+    missing_data_dir = tmp_path / 'missing_processed_data'
+    weights_path = tmp_path / 'missing_weights.pth'
+    output_dir = tmp_path / 'results'
+
+    with pytest.raises(
+        FileNotFoundError,
+        match='Run preprocessing first',
+    ):
+        run_inference(
+            data_dir=str(missing_data_dir),
+            weights_path=str(weights_path),
+            output_dir=str(output_dir),
+        )
