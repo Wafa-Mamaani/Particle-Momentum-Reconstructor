@@ -1,7 +1,39 @@
 import os
 import argparse
+
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+def calculate_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+) -> tuple[np.ndarray, float, float, float]:
+    """Calculate residuals, bias, standard deviation, and RMSE."""
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
+
+    if y_true.shape != y_pred.shape:
+        raise ValueError(
+            'True and predicted values must have the same shape.'
+        )
+
+    if y_true.size < 2:
+        raise ValueError(
+            'At least two predictions are required to calculate metrics.'
+        )
+
+    if not np.all(np.isfinite(y_true)) or not np.all(np.isfinite(y_pred)):
+        raise ValueError(
+            'True and predicted values must contain only finite numbers.'
+        )
+
+    residuals = y_pred - y_true
+    bias = float(np.mean(residuals))
+    standard_deviation = float(np.std(residuals, ddof=1))
+    rmse = float(np.sqrt(np.mean(residuals**2)))
+
+    return residuals, bias, standard_deviation, rmse
 
 def plot_results(csv_path: str, output_dir: str):
     """Generates publication-ready visualizations of the model's predictive performance strictly from the pre-calculated results CSV."""
@@ -9,15 +41,18 @@ def plot_results(csv_path: str, output_dir: str):
 
     try:
         df = pd.read_csv(csv_path)
-    except FileNotFoundError:
-        raise FileNotFoundError(f'Cannot find {csv_path}. Run predict.py first.')
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f'Cannot find {csv_path}. Run predict.py first.'
+        ) from exc
 
-    y_true = df['pt_true_mev']
-    y_pred = df['pt_pred_mev']
-    residuals = y_pred - y_true
-    res_mean = residuals.mean()
-    res_std = residuals.std()
-    rmse = (residuals ** 2).mean() ** 0.5
+    y_true = df['pt_true_mev'].to_numpy(dtype=float)
+    y_pred = df['pt_pred_mev'].to_numpy(dtype=float)
+
+    residuals, res_mean, res_std, rmse = calculate_metrics(
+        y_true,
+        y_pred,
+    )
 
     #Plot 1: True vs Predicted Momentum
     plt.figure(figsize = (8, 8))
@@ -58,12 +93,25 @@ def plot_results(csv_path: str, output_dir: str):
     print(f'Plots successfully generated and saved to {output_dir}/')
 
 def main():
-    parser = argparse.ArgumentParser(description = 'Plot model evaluation results.')
-    parser.add_argument('--input', type = str, default = 'results/test_predictions.csv', help = 'Path to predictions CSV.')
-    parser.add_argument('--outdir', type = str, default = 'results/plots', help = 'Directory to save the PNG images.')
+    parser = argparse.ArgumentParser(
+        description='Plot model evaluation results.'
+    )
+    parser.add_argument(
+        '--input',
+        type=str,
+        default='results/test_predictions.csv',
+        help='Path to predictions CSV.',
+    )
+    parser.add_argument(
+        '--outdir',
+        type=str,
+        default='results/plots',
+        help='Directory to save the PNG images.',
+    )
 
     args = parser.parse_args()
     plot_results(args.input, args.outdir)
+
 
 if __name__ == '__main__':
     main()
