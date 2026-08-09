@@ -33,6 +33,19 @@ class TrackPreprocessor:
             raise ValueError(
                 "Input CSV is missing the required column 'pt_true'."
             )
+
+
+        feature_df = df.drop(columns=['pt_true'])
+
+        try:
+            feature_df = feature_df.apply(
+                pd.to_numeric,
+                errors='raise',
+            )
+        except (ValueError, TypeError) as exc:
+            raise ValueError(
+                'Feature columns must contain only numeric values.'
+            ) from exc
         
         #Isolate the target (pt_true) from the spatial hit coordinates
         y = df['pt_true'].values.reshape(-1, 1)

@@ -141,4 +141,26 @@ def test_preprocessor_reports_missing_target_column(tmp_path):
         processor.load_and_split()
 
 
+def test_preprocessor_rejects_non_numeric_features(tmp_path):
+    """Check that tracker feature columns contain only numeric values."""
+    csv_path = tmp_path / 'non_numeric_features.csv'
+
+    df = pd.DataFrame(
+        {
+            'hit_0_x': [0.1, 0.2, 0.3, 0.4],
+            'hit_0_y': [0.5, 'invalid', 0.7, 0.8],
+            'pt_true': [80.0, 85.0, 90.0, 95.0],
+        }
+    )
+    df.to_csv(csv_path, index=False)
+
+    processor = TrackPreprocessor(filepath=str(csv_path))
+
+    with pytest.raises(
+        ValueError,
+        match='Feature columns must contain only numeric values',
+    ):
+        processor.load_and_split()
+
+
 #Property of Wafa Mamani. May 2026.
