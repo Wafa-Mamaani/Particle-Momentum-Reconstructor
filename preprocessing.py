@@ -46,10 +46,16 @@ class TrackPreprocessor:
             raise ValueError(
                 'Feature columns must contain only numeric values.'
             ) from exc
+
+        if len(df) < 5:
+            raise ValueError(
+                'Input dataset must contain at least 5 rows to create '
+                'train, validation, and test splits.'
+            )
         
         #Isolate the target (pt_true) from the spatial hit coordinates
         y = df['pt_true'].values.reshape(-1, 1)
-        X = df.drop(columns = ['pt_true']).values
+        X = feature_df.to_numpy()
 
         #Isolate the Training set
         X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size = 0.25, random_state = self.random_state)

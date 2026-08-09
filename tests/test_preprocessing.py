@@ -163,4 +163,26 @@ def test_preprocessor_rejects_non_numeric_features(tmp_path):
         processor.load_and_split()
 
 
+def test_preprocessor_rejects_dataset_too_small_to_split(tmp_path):
+    """Check that enough rows exist for train, validation, and test sets."""
+    csv_path = tmp_path / 'too_small.csv'
+
+    df = pd.DataFrame(
+        {
+            'hit_0_x': [0.1, 0.2, 0.3, 0.4],
+            'hit_0_y': [0.5, 0.6, 0.7, 0.8],
+            'pt_true': [80.0, 85.0, 90.0, 95.0],
+        }
+    )
+    df.to_csv(csv_path, index=False)
+
+    processor = TrackPreprocessor(filepath=str(csv_path))
+
+    with pytest.raises(
+        ValueError,
+        match='at least 5 rows',
+    ):
+        processor.load_and_split()
+
+
 #Property of Wafa Mamani. May 2026.
