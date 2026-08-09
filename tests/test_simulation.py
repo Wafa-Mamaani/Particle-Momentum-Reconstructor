@@ -43,4 +43,48 @@ def test_generate_toy_tracks_zero_samples_raises_error():
     with pytest.raises(ValueError):
         generate_toy_tracks(num_samples = 0)
 
+
+@pytest.mark.parametrize(
+    'kwargs, expected_message',
+    [
+        (
+            {'b_field': 0.0},
+            'magnetic field strength must be positive',
+        ),
+        (
+            {'efficiency': 1.5},
+            'Efficiency must be between 0 and 1',
+        ),
+        (
+            {'efficiency': -0.1},
+            'Efficiency must be between 0 and 1',
+        ),
+        (
+            {'resolution': -0.001},
+            'Resolution cannot be negative',
+        ),
+        (
+            {'layers': []},
+            'At least one detector layer is required',
+        ),
+        (
+            {'layers': [0.4, -0.5]},
+            'All detector layer radii must be positive',
+        ),
+    ],
+)
+def test_generate_toy_tracks_rejects_invalid_parameters(
+    kwargs,
+    expected_message,
+):
+    """Check that physically invalid simulation inputs are rejected."""
+    with pytest.raises(
+        ValueError,
+        match=expected_message,
+    ):
+        generate_toy_tracks(
+            num_samples=5,
+            **kwargs,
+        )
+
 #Property of Wafa Mamani. May 2026.

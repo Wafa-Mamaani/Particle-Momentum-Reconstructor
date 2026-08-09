@@ -38,6 +38,20 @@ def generate_toy_tracks(
     
     if num_samples <= 0:
         raise ValueError('The number of samples must be a positive integer.')
+    if b_field <= 0:
+        raise ValueError('The magnetic field strength must be positive.')
+
+    if not 0.0 <= efficiency <= 1.0:
+        raise ValueError('Efficiency must be between 0 and 1.')
+
+    if resolution < 0:
+        raise ValueError('Resolution cannot be negative.')
+
+    if len(layers) == 0:
+        raise ValueError('At least one detector layer is required.')
+
+    if any(layer <= 0 for layer in layers):
+        raise ValueError('All detector layer radii must be positive.')
     
     rng = np.random.default_rng(random_seed)
     r_layers = np.array(layers)
