@@ -29,6 +29,11 @@ class TrackPreprocessor:
             msg = f'Data file not found at {self.filepath}. Please run simulation.py first.'
             raise FileNotFoundError(msg) from None
 
+        if 'pt_true' not in df.columns:
+            raise ValueError(
+                "Input CSV is missing the required column 'pt_true'."
+            )
+        
         #Isolate the target (pt_true) from the spatial hit coordinates
         y = df['pt_true'].values.reshape(-1, 1)
         X = df.drop(columns = ['pt_true']).values

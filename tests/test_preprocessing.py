@@ -120,4 +120,25 @@ def test_preprocessor_rejects_zero_target_variance():
         processor.fit(X_train, y_train)
 
 
+def test_preprocessor_reports_missing_target_column(tmp_path):
+    """Check that a CSV without pt_true produces a clear error."""
+    csv_path = tmp_path / 'missing_target.csv'
+
+    df = pd.DataFrame(
+        {
+            'hit_0_x': [0.1, 0.2, 0.3],
+            'hit_0_y': [0.4, 0.5, 0.6],
+        }
+    )
+    df.to_csv(csv_path, index=False)
+
+    processor = TrackPreprocessor(filepath=str(csv_path))
+
+    with pytest.raises(
+        ValueError,
+        match="required column 'pt_true'",
+    ):
+        processor.load_and_split()
+
+
 #Property of Wafa Mamani. May 2026.
