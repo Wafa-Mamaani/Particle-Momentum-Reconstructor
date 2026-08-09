@@ -63,6 +63,11 @@ class TrackPreprocessor:
         self.y_mean = np.mean(y_train)
         self.y_std = np.std(y_train)
 
+        if self.y_std == 0:
+            raise ValueError(
+                'Target standard deviation is zero; target scaling is undefined.'
+            )
+
     def transform(self, X: np.ndarray, y: np.ndarray) -> tuple:
         '''
         Applies the training statistics to normalize the input arrays.

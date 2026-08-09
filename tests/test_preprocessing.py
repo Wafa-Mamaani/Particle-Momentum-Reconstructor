@@ -93,4 +93,36 @@ def test_preprocessor_file_not_found():
     with pytest.raises(FileNotFoundError):
         processor.load_and_split()
 
+
+def your_current_last_test():
+    ...
+    ...
+
+
+def test_preprocessor_rejects_zero_target_variance():
+    """Check that constant training targets cannot be standardized."""
+    processor = TrackPreprocessor(filepath='dummy.csv')
+
+    X_train = np.array(
+        [
+            [1.0, 2.0],
+            [2.0, 3.0],
+            [3.0, 4.0],
+        ]
+    )
+    y_train = np.array(
+        [
+            [85.0],
+            [85.0],
+            [85.0],
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='Target standard deviation is zero',
+    ):
+        processor.fit(X_train, y_train)
+
+
 #Property of Wafa Mamani. May 2026.
