@@ -185,4 +185,59 @@ def test_preprocessor_rejects_dataset_too_small_to_split(tmp_path):
         processor.load_and_split()
 
 
+def test_preprocessor_rejects_non_numeric_target(tmp_path):
+    """Check that pt_true contains only numeric values."""
+    csv_path = tmp_path / 'non_numeric_target.csv'
+
+    df = pd.DataFrame(
+        {
+            'hit_0_x': [0.1, 0.2, 0.3, 0.4, 0.5],
+            'hit_0_y': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'pt_true': [80.0, 85.0, 'invalid', 95.0, 100.0],
+        }
+    )
+    df.to_csv(csv_path, index=False)
+
+    processor = TrackPreprocessor(filepath=str(csv_path))
+
+    with pytest.raises(
+        ValueError,
+        match="Target column 'pt_true' must contain only numeric values",
+    ):
+        processor.load_and_split()
+
+
+@pytest.mark.parametrize(
+    'invalid_target',
+    [
+        np.nan,
+        np.inf,
+        -np.inf,
+    ],
+)
+def test_preprocessor_rejects_non_finite_target(
+    tmp_path,
+    invalid_target,
+):
+    """Check that pt_true does not contain NaN or infinite values."""
+    csv_path = tmp_path / 'non_finite_target.csv'
+
+    df = pd.DataFrame(
+        {
+            'hit_0_x': [0.1, 0.2, 0.3, 0.4, 0.5],
+            'hit_0_y': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'pt_true': [80.0, 85.0, invalid_target, 95.0, 100.0],
+        }
+    )
+    df.to_csv(csv_path, index=False)
+
+    processor = TrackPreprocessor(filepath=str(csv_path))
+
+    with pytest.raises(
+        ValueError,
+        match="Target column 'pt_true' must contain only finite values",
+    ):
+        processor.load_and_split()
+
+
 #Property of Wafa Mamani. May 2026.

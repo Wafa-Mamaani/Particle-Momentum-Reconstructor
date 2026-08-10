@@ -25,7 +25,7 @@ class TrackPreprocessor:
         '''Loads the raw CSV and partitions it into Train, Validation, and Test sets.'''
         try:
             df = pd.read_csv(self.filepath)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             msg = f'Data file not found at {self.filepath}. Please run simulation.py first.'
             raise FileNotFoundError(msg) from None
 
@@ -33,7 +33,6 @@ class TrackPreprocessor:
             raise ValueError(
                 "Input CSV is missing the required column 'pt_true'."
             )
-
 
         feature_df = df.drop(columns=['pt_true'])
 
@@ -46,6 +45,20 @@ class TrackPreprocessor:
             raise ValueError(
                 'Feature columns must contain only numeric values.'
             ) from exc
+        try:
+            target_series = pd.to_numeric(
+                df['pt_true'],
+                errors='raise',
+            )
+        except (ValueError, TypeError) as exc:
+            raise ValueError(
+               "Target column 'pt_true' must contain only numeric values."
+            ) from exc
+        
+        if not np.all(np.isfinite(target_series.to_numpy(dtype=float))):
+            raise ValueError(
+                "Target column 'pt_true' must contain only finite values."
+            )
 
         if len(df) < 5:
             raise ValueError(
@@ -53,13 +66,13 @@ class TrackPreprocessor:
                 'train, validation, and test splits.'
             )
         
-        #Isolate the target (pt_true) from the spatial hit coordinates
-        y = df['pt_true'].values.reshape(-1, 1)
+        # Isolate the target (pt_true) from the spatial hit coordinates
+        y = target_series.to_numpy(dtype=float).reshape(-1, 1)
         X = feature_df.to_numpy()
 
-        #Isolate the Training set
+        # Isolate the Training set
         X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size = 0.25, random_state = self.random_state)
-        #Divide the remainder into Validation and Test
+        # Divide the remainder into Validation and Test
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size = 0.50, random_state = self.random_state)
 
         return {
@@ -70,10 +83,10 @@ class TrackPreprocessor:
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray):
         '''Calculates the mean and standard deviation of the features and targets strictly from the training data.'''
-        #Create a boolean mask to completely ignore padded values during stat calculation
+        # Create a boolean mask to completely ignore padded values during stat calculation
         valid_mask = (X_train != self.pad_val)
         
-        #Calculate feature-wise statistics using only valid hits.
+        # Calculate feature-wise statistics using only valid hits.
         self.x_mean = np.zeros(X_train.shape[1])
         self.x_std = np.ones(X_train.shape[1])
         
@@ -100,18 +113,18 @@ class TrackPreprocessor:
         if self.x_mean is None or self.x_std is None:
             raise RuntimeError('The preprocessor must be fitted before calling transform.')
 
-        #Initialize scaled arrays
+        # Initialize scaled arrays
         X_scaled = np.copy(X)
         y_scaled = (y - self.y_mean) / self.y_std
         
-        #Apply scaling only to the valid indices, utilizing NumPy broadcasting
+        # Apply scaling only to the valid indices, utilizing NumPy broadcasting
         valid_mask = (X != self.pad_val)
         
         for col_idx in range(X.shape[1]):
             col_mask = valid_mask[ : , col_idx]
             X_scaled[col_mask, col_idx] = (X[col_mask, col_idx] - self.x_mean[col_idx]) / self.x_std[col_idx]
 
-        #Use an assert here strictly to explicitly document the dimensional invariant
+        # Use an assert here strictly to explicitly document the dimensional invariant
         assert X_scaled.shape[0] == y_scaled.shape[0], 'Feature and target row counts diverged during transform.'
         
         return X_scaled, y_scaled
@@ -124,7 +137,7 @@ class TrackPreprocessor:
             outpath = os.path.join(outdir, f'{name}.npy')
             np.save(outpath, array)
             
-        #Save the target statistics so predict.py can un-scale the final outputs back to MeV/c
+        # Save the target statistics so predict.py can un-scale the final outputs back to MeV/c
         stats_path = os.path.join(outdir, 'y_stats.npz')
         np.savez(stats_path, y_mean = self.y_mean, y_std = self.y_std)
 
@@ -142,7 +155,7 @@ class TrackPreprocessor:
         print(f'Preprocessing complete. Processed tensors and scaling stats saved to {outdir}')
 
 
-def main(): #pragma: no cover
+def main(): # pragma: no cover
     '''Command line interface for the preprocessing pipeline.'''
     parser = argparse.ArgumentParser(description = 'Preprocess track data for neural network training.')
     parser.add_argument('--input', type = str, default = 'data_files/simulated_data/simulated_tracks.csv', help = 'Path to the raw CSV file.')
@@ -158,7 +171,7 @@ def main(): #pragma: no cover
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
         raise SystemExit(f'Preprocessing failed: {exc}') from exc
 
-if __name__ == '__main__': #pragma: no cover
+if __name__ == '__main__': # pragma: no cover
     main()
 
-#Property of Wafa Mamani. May 2026.
+# Property of Wafa Mamani. May 2026.
