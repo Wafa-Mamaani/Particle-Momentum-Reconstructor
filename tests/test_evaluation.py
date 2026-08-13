@@ -86,3 +86,18 @@ def test_plot_results_creates_expected_files(tmp_path):
 
     assert scatter_path.stat().st_size > 0
     assert residuals_path.stat().st_size > 0
+
+
+def test_plot_results_reports_missing_input_file(tmp_path):
+    """Check that a missing prediction CSV produces a clear error."""
+    missing_csv = tmp_path / 'missing_predictions.csv'
+    output_dir = tmp_path / 'plots'
+
+    with pytest.raises(
+        FileNotFoundError,
+        match='Run predict.py first',
+    ):
+        plot_results(
+            csv_path=str(missing_csv),
+            output_dir=str(output_dir),
+        )
