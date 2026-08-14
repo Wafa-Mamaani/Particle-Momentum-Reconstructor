@@ -137,3 +137,90 @@ def test_run_inference_reports_missing_model_weights(
             weights_path=str(missing_weights_path),
             output_dir=str(output_dir),
         )
+
+
+def test_prediction_infers_input_dimension_from_data(tmp_path):
+    """Check that prediction works with a non-default feature dimension."""
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    output_dir = tmp_path / 'results'
+
+    data_dir.mkdir()
+    weights_dir.mkdir()
+
+    X_test = np.zeros((3, 8), dtype=np.float32)
+    y_test = np.array([[-1.0], [0.0], [1.0]], dtype=np.float32)
+
+    np.save(data_dir / 'X_test.npy', X_test)
+    np.save(data_dir / 'y_test.npy', y_test)
+
+    np.savez(
+        data_dir / 'y_stats.npz',
+        y_mean=np.array([85.0]),
+        y_std=np.array([2.0]),
+    )
+
+    model = TrackMomentumRegressor(
+        input_dim=8,
+        pad_val=-9999.0,
+    )
+
+    torch.save(
+        model.state_dict(),
+        weights_dir / 'best_model.pth',
+    )
+
+    run_inference(
+        data_dir=str(data_dir),
+        weights_path=str(weights_dir / 'best_model.pth'),
+        output_dir=str(output_dir),
+)
+
+    assert (output_dir / 'test_predictions.csv').exists()
+
+
+def test_run_inference_rejects_mismatched_feature_dimension(tmp_path):
+    """Check that test features match the trained model input dimension."""
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    output_dir = tmp_path / 'results'
+
+    data_dir.mkdir()
+    weights_dir.mkdir()
+
+    # Test data has 10 features.
+    np.save(
+        data_dir / 'X_test.npy',
+        np.zeros((3, 10), dtype=np.float32),
+    )
+    np.save(
+        data_dir / 'y_test.npy',
+        np.zeros((3, 1), dtype=np.float32),
+    )
+
+    np.savez(
+        data_dir / 'y_stats.npz',
+        y_mean=np.array([85.0]),
+        y_std=np.array([2.0]),
+    )
+
+    # Trained model expects only 8 features.
+    model = TrackMomentumRegressor(
+        input_dim=8,
+        pad_val=-9999.0,
+    )
+
+    torch.save(
+        model.state_dict(),
+        weights_dir / 'best_model.pth',
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='Test feature dimension does not match the trained model',
+    ):
+        run_inference(
+            data_dir=str(data_dir),
+            weights_path=str(weights_dir / 'best_model.pth'),
+            output_dir=str(output_dir),
+        )

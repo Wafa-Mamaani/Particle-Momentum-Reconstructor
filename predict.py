@@ -33,16 +33,24 @@ def run_inference(data_dir: str, weights_path: str, output_dir: str):
             "Run train.py first."
         )
 
-    model = TrackMomentumRegressor(
-        input_dim=72,
-        pad_val=-9999.0,
-    ).to(device)
-
     state_dict = torch.load(
         weights_path,
         map_location=device,
         weights_only=True,
     )
+
+    input_dim = state_dict['network.0.weight'].shape[1]
+
+    if X_test.shape[1] != input_dim:
+        raise ValueError(
+            'Test feature dimension does not match the trained model.'
+        )
+
+    model = TrackMomentumRegressor(
+        input_dim=input_dim,
+        pad_val=-9999.0,
+    ).to(device)
+
     model.load_state_dict(state_dict)
     model.eval()
 
