@@ -236,3 +236,163 @@ def test_train_model_stops_early_without_validation_improvement(
     assert 'Epoch 002' in output
     assert 'Epoch 003' not in output
     assert (weights_dir / 'best_model.pth').exists()
+
+
+def test_train_model_rejects_non_positive_epochs(tmp_path):
+    """Check that the number of training epochs must be positive."""
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    data_dir.mkdir()
+
+    rng = np.random.default_rng(13)
+
+    np.save(
+        data_dir / 'X_train.npy',
+        rng.normal(size=(12, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_train.npy',
+        rng.normal(size=(12, 1)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'X_val.npy',
+        rng.normal(size=(4, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_val.npy',
+        rng.normal(size=(4, 1)).astype(np.float32),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='epochs must be positive',
+    ):
+        train_model(
+            data_dir=str(data_dir),
+            weights_dir=str(weights_dir),
+            epochs=0,
+            batch_size=4,
+            lr=0.001,
+            patience=2,
+            seed=13,
+        )
+
+
+def test_train_model_rejects_non_positive_batch_size(tmp_path):
+    """Check that batch size must be positive."""
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    data_dir.mkdir()
+
+    rng = np.random.default_rng(13)
+
+    np.save(
+        data_dir / 'X_train.npy',
+        rng.normal(size=(12, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_train.npy',
+        rng.normal(size=(12, 1)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'X_val.npy',
+        rng.normal(size=(4, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_val.npy',
+        rng.normal(size=(4, 1)).astype(np.float32),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='batch_size must be positive',
+    ):
+        train_model(
+            data_dir=str(data_dir),
+            weights_dir=str(weights_dir),
+            epochs=1,
+            batch_size=0,
+            lr=0.001,
+            patience=2,
+            seed=13,
+        )
+
+
+def test_train_model_rejects_non_positive_learning_rate(tmp_path):
+    """Check that learning rate must be positive."""
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    data_dir.mkdir()
+
+    rng = np.random.default_rng(13)
+
+    np.save(
+        data_dir / 'X_train.npy',
+        rng.normal(size=(12, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_train.npy',
+        rng.normal(size=(12, 1)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'X_val.npy',
+        rng.normal(size=(4, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_val.npy',
+        rng.normal(size=(4, 1)).astype(np.float32),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='lr must be positive',
+    ):
+        train_model(
+            data_dir=str(data_dir),
+            weights_dir=str(weights_dir),
+            epochs=1,
+            batch_size=4,
+            lr=0.0,
+            patience=2,
+            seed=13,
+        )
+
+
+def test_train_model_rejects_non_positive_patience(tmp_path):
+    """Check that early-stopping patience must be positive."""
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    data_dir.mkdir()
+
+    rng = np.random.default_rng(13)
+
+    np.save(
+        data_dir / 'X_train.npy',
+        rng.normal(size=(12, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_train.npy',
+        rng.normal(size=(12, 1)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'X_val.npy',
+        rng.normal(size=(4, 72)).astype(np.float32),
+    )
+    np.save(
+        data_dir / 'y_val.npy',
+        rng.normal(size=(4, 1)).astype(np.float32),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='patience must be positive',
+    ):
+        train_model(
+            data_dir=str(data_dir),
+            weights_dir=str(weights_dir),
+            epochs=1,
+            batch_size=4,
+            lr=0.001,
+            patience=0,
+            seed=13,
+        )

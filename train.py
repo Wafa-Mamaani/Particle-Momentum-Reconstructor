@@ -54,6 +54,18 @@ def train_model(
     patience: int = 10,
     seed: int = 13,
 ):
+    if epochs <= 0:
+        raise ValueError('epochs must be positive')
+
+    if batch_size <= 0:
+        raise ValueError('batch_size must be positive')
+
+    if lr <= 0:
+        raise ValueError('lr must be positive')
+
+    if patience <= 0:
+        raise ValueError('patience must be positive')
+
     '''
     Executes the manual gradient descent and validation loops.
     Includes explicit early stopping and state saving.
