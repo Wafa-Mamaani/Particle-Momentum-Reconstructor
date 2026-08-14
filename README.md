@@ -1,21 +1,25 @@
 # Particle Track Momentum Reconstructor
-This repository contains documentation regarding the Software and Computing exam of the Applied Physics curriculum for M.Sc. degree at UniBo.
+This repository contains the software project developed for the Software and Computing exam of the M.Sc. in Applied Physics at the University of Bologna.
 
-- [Survey](#Survey)
-- [Repository Contents](#Repository-Contents)
-- [Installation](#Installation)
-- [Tutorial](#Tutorial)
-    - [Data Preparation & Preprocessing](#Data-Preparation-&-Preprocessing)
-    - [Training](#Training)
-    - [Prediction](#Prediction)
-    - [Evaluation](#Evaluation)
-- [Testing](#Testing)
-- [References](#References)
+- [Survey](#survey)
+- [Repository Contents](#repository-contents)
+- [Installation](#installation)
+- [Tutorial](#tutorial)
+    - [Data Preparation & Preprocessing](#data-preparation--preprocessing)
+    - [Training](#training)
+    - [Prediction](#prediction)
+    - [Evaluation](#evaluation)
+- [Testing](#testing)
+- [References](#references)
 
 ## Survey
-Modern bleeding-edge High Energy Physics (HEP) experiments are usually divided into three main catagories refered to as: intensity, energy and cosmic frontiers. Physicists involved in the intensity and energy frontiers, seek to shed light on rare interactions between fundamental particles at various energy scales, which in turn could lead to more precise measurements of established fundamental values, extensions in the Standard Model (SM), or the discovery of new Beyond the Standard Model (BSM) physics. Many such experiments require ultra-sensetive detection systems that come in the form of ultra-light straw-tube or wire-chamber tracking detectors. These detection systems must produce high-resolution reconstruction of signal tracks such that they are distinguished from the overwhelming background events. The vast majority of such detector systems, which study charge particles, take advantage of solenoid-like superconucting magnets that produce uniform magnetic fields, which in turn would force the charged particles to create helical tracks as they traverse the length of the detector, due to the Lorentz force applied in the transverse plane. Detector electronics later try to reconstruct the 3D hit positions of the passing charged particles, which would then be reconstructed into 3D tracks with near-uniform helical radii. At last, the Larmor radius of the helix is used, in tandem with the charge of the passing particle and the magnitude of the uniform magnetic field, to extract the initial transverse momentum of the aforementioned particle. The longitudinal component of the momentum is later recovered via energy deposition values inside the calorimeter and tracker cells.
+Charged-particle tracking in magnetic fields is an important component of many High Energy Physics (HEP) experiments. When a charged particle moves through a magnetic field, the Lorentz force bends its trajectory in the plane transverse to the field. The radius of curvature of this trajectory is related to the particle's transverse momentum, making precise tracking measurements essential for momentum reconstruction.
 
-This project aims to provide a simple machine learning (ML) pipeline in which simulated MC-truth branch (x,y) hit position data for signal electrons are used to predict initial transverse momenta of the said particles. The predicted values are later compared with MC-truth transverse momentum values via the residuals, with per-event standard deviation values acting as metrics for detection resolution.
+Low-mass tracking detectors, such as straw-tube trackers, record a sequence of spatial hit positions along a particle trajectory while minimizing interactions with detector material. The Mu2e experiment at Fermilab is one example: its straw-tube tracker operates inside the Detector Solenoid and provides the primary momentum measurement for conversion-electron candidates. <sup>[<a href="#ref-1">1</a>]</sup>
+
+This project implements a simplified machine-learning pipeline for transverse-momentum reconstruction from simulated tracking data. Rather than reproducing the full geometry and detector response of a real experiment, the simulator models charged particles moving in a uniform axial magnetic field and records their transverse `(x, y)` intersections with concentric detector layers. Gaussian spatial smearing and stochastic hit inefficiency are included to introduce measurement uncertainty and missing detector hits.
+
+The simulated hit coordinates are preprocessed and used as inputs to a PyTorch multilayer perceptron that predicts the true transverse momentum, `pT`. Performance is evaluated on a held-out test set by comparing the predicted and simulated truth values using residuals, Root Mean Square Error (RMSE), bias, and the standard deviation of the residual distribution.
 
 **Example of a straw-tube tracker:** Mu2e detector solenoid (DS) containing the stopping target, tracker and calorimeter, with charged particles passing through a non-zero magnetic field <sup>[<a href="#ref-1">1</a>]</sup>.
 
@@ -32,15 +36,19 @@ The project is organized into decoupled modules to satisfy the "bus test" of sof
 ├── results/                    # Reconstruction plots and prediction CSVs
     ├── test_predictions.csv
     ├── plots/
-├── tests/                      # Pytest suite with full code coverage
+├── tests/                      # Unit and end-to-end pytest suite
+│   ├── test_end_to_end.py
+│   ├── test_evaluation.py
 │   ├── test_model.py
+│   ├── test_prediction.py
 │   ├── test_preprocessing.py
-│   └── test_simulation.py
+│   ├── test_simulation.py
+│   └── test_training.py
 ├── weights/                    # Saved model state dictionaries
 ├── model.py                    # PyTorch MLP architecture with masking logic
 ├── simulation.py               # MC-truth physics track generator
 ├── preprocessing.py            # Leakage-free scaling and data splitting
-├── train.py                    # PyTorch training engine with Early Stopping
+├── train.py                    # PyTorch training engine with early stopping
 ├── predict.py                  # Inference and physical unit restoration
 ├── plot.py                     # Final visualization and residual analysis
 ├── requirements.txt            # Runtime dependencies
@@ -49,7 +57,6 @@ The project is organized into decoupled modules to satisfy the "bus test" of sof
 ```
 
 ## Installation
-
 This project was tested with Python 3.12.2. Using a virtual environment is recommended to keep the project dependencies separate from other Python installations.
 
 Clone the repository and enter the project directory:
@@ -76,21 +83,26 @@ PyTorch installation may depend on the operating system and whether GPU support 
 https://pytorch.org/get-started/locally/
 
 ## Tutorial
-The model expects a strict sequential execution order.
+The reconstruction pipeline is intended to be executed sequentially:
+simulation, preprocessing, training, prediction, and evaluation.
 
 ### Data Preparation & Preprocessing
-Since Fermilab GEANT4 simulations of the Mu2e experiment are under strict security locks, we have created a self-confined simulation that will generate the CE electron helical tracks within the magnetic field of the Tracker.
-Generate 50,000 simulated tracks with 36 planes of detection. The simulator applies Gaussian smearing to model spatial resolution and stochastic inefficiency to model detector dead-zones.
+To provide a reproducible dataset without depending on experiment-specific simulation software or external data files, this project includes a self-contained toy Monte Carlo track generator.
+
+Generate 50,000 simulated charged-particle tracks across 36 detector layers. The simulator applies Gaussian spatial smearing to model measurement uncertainty and stochastic hit inefficiency to represent missing detector hits.
+
 ```bash
 python simulation.py --samples 50000 --seed 13
 ```
-Next, we prepare the data for the neural network. This script isolates the training statistics to ensure zero information leakage to the test set.
+
+Next, preprocess the simulated data for neural-network training. The preprocessing stage splits the dataset into training, validation, and test subsets and calculates scaling parameters using only the training data to avoid information leakage.
+
 ```bash
 python preprocessing.py --input data_files/simulated_data/simulated_tracks.csv
 ```
 
 ### Training
-rain the momentum regressor using PyTorch. The model uses the Adam optimizer and Mean Squared Error (MSE) loss.
+Train the momentum regressor using PyTorch. The model uses the Adam optimizer and Mean Squared Error (MSE) loss.
 ```bash
 python train.py --epochs 150 --lr 0.001
 ```
@@ -106,19 +118,29 @@ Analyze the reconstruction resolution.
 ```bash
 python plot.py
 ```
-The resulting plots in `results/plots/` provide the Root Mean Square Error (RMSE) and a residual distribution, which characterizes the detector's momentum resolution.
+The resulting plots in `results/plots/` report the root mean square error (RMSE), bias, and standard deviation of the residual distribution for the reconstructed transverse momentum.
 
-| Metric | Typical Performance |
-| :--- | :--- |
-| **Validation MSE** | ~ 0.0024 |
-| **Momentum Resolution (Std Dev)** | < 0.6 MeV/c |
 
 ## Testing
-This codebase maintains **100% test coverage** across all core logic modules (`simulation.py`, `preprocessing.py`, `model.py`). The suite rigorously tests numerical scaling invariants, dynamic padding mask behaviors, and physical kinematic bounds.
+The project includes unit and integration tests for the simulation, preprocessing, model, training, prediction, and evaluation stages. An end-to-end test also verifies that the complete reconstruction workflow runs successfully from track simulation through final evaluation.
 
-To execute the test suite and view the coverage report:
+Install the development dependencies with:
+
 ```bash
-coverage run -m pytest
+python -m pip install -r requirements-dev.txt
+```
+
+Run the complete test suite with:
+
+```bash
+python -m pytest
+```
+
+To measure code coverage across the main project modules:
+
+```bash
+coverage erase
+coverage run --source=simulation,preprocessing,model,train,predict,plot -m pytest
 coverage report -m
 ```
 
