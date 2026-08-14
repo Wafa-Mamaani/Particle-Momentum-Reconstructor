@@ -54,6 +54,10 @@ def train_model(
     patience: int = 10,
     seed: int = 13,
 ):
+    '''
+    Executes the manual gradient descent and validation loops.
+    Includes explicit early stopping and state saving.
+    '''
     if epochs <= 0:
         raise ValueError('epochs must be positive')
 
@@ -65,11 +69,7 @@ def train_model(
 
     if patience <= 0:
         raise ValueError('patience must be positive')
-
-    '''
-    Executes the manual gradient descent and validation loops.
-    Includes explicit early stopping and state saving.
-    '''
+    
     set_random_seed(seed)
     
     os.makedirs(weights_dir, exist_ok = True)
@@ -81,6 +81,11 @@ def train_model(
     #2. Data Preparation
     train_dataset = TrackDataset(os.path.join(data_dir, 'X_train.npy'), os.path.join(data_dir, 'y_train.npy'))
     val_dataset = TrackDataset(os.path.join(data_dir, 'X_val.npy'), os.path.join(data_dir, 'y_val.npy'))
+
+    if train_dataset.X.shape[1] != val_dataset.X.shape[1]:
+        raise ValueError(
+            'Training and validation feature dimensions must match.'
+        )
 
     # The DataLoader handles batching and reproducible shuffling.
     generator = torch.Generator()
@@ -100,7 +105,12 @@ def train_model(
     )
 
     #3. Model, Loss, and Optimizer Initialization
-    model = TrackMomentumRegressor(input_dim = 72, pad_val = -9999.0).to(device)
+    input_dim = train_dataset.X.shape[1]
+
+    model = TrackMomentumRegressor(
+        input_dim=input_dim,
+        pad_val=-9999.0,
+    ).to(device)
 
     #Mean Squared Error
     criterion = nn.MSELoss()
