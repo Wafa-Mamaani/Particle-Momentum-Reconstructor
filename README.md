@@ -1,6 +1,25 @@
 # Particle Track Momentum Reconstructor
+[![Tests](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml/badge.svg)](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml)
+This repository contains the software project developed for the Software and Computing exam of the M.Sc. in Applied Physics at the University of Bologna.
+# Particle Track Momentum Reconstructor
+
+[![Tests](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml/badge.svg)](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml)
+
 This repository contains the software project developed for the Software and Computing exam of the M.Sc. in Applied Physics at the University of Bologna.
 
+## Key Features
+
+- Modular pipeline for simulation, preprocessing, training, prediction, and evaluation
+- Reproducible model training through controlled random seeds
+- Input validation and informative error handling across the main workflow
+- Unit and integration testing, including a complete end-to-end pipeline test
+- Automated testing with GitHub Actions
+- Support for dynamically inferred model input dimensions
+- Leakage-free preprocessing using statistics derived only from the training set
+
+## Contents
+
+- [Key Features](#key-features)
 - [Survey](#survey)
 - [Repository Contents](#repository-contents)
 - [Installation](#installation)
@@ -19,14 +38,14 @@ Low-mass tracking detectors, such as straw-tube trackers, record a sequence of s
 
 This project implements a simplified machine-learning pipeline for transverse-momentum reconstruction from simulated tracking data. Rather than reproducing the full geometry and detector response of a real experiment, the simulator models charged particles moving in a uniform axial magnetic field and records their transverse `(x, y)` intersections with concentric detector layers. Gaussian spatial smearing and stochastic hit inefficiency are included to introduce measurement uncertainty and missing detector hits.
 
-The simulated hit coordinates are preprocessed and used as inputs to a PyTorch multilayer perceptron that predicts the true transverse momentum, `pT`. Performance is evaluated on a held-out test set by comparing the predicted and simulated truth values using residuals, Root Mean Square Error (RMSE), bias, and the standard deviation of the residual distribution.
+The simulated hit coordinates are preprocessed and used as inputs to a PyTorch multilayer perceptron that predicts the true transverse momentum, `pT`. Performance is evaluated on a held-out test set by comparing the predicted and simulated truth values using residuals, root mean square error (RMSE), bias, and the standard deviation of the residual distribution.
 
 **Example of a straw-tube tracker:** Mu2e detector solenoid (DS) containing the stopping target, tracker and calorimeter, with charged particles passing through a non-zero magnetic field <sup>[<a href="#ref-1">1</a>]</sup>.
 
 <a href="https://github.com/user-attachments/assets/e5b85da3-a522-44b2-bbea-65e23e095cec">
   <img src="https://github.com/user-attachments/assets/e5b85da3-a522-44b2-bbea-65e23e095cec" width="75%">
 </a>
-
+  
 ## Repository Contents
 The project is organized into decoupled modules to satisfy the "bus test" of software maintainability:
 ```text
