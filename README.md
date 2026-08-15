@@ -29,6 +29,7 @@ This repository contains the software project developed for the Software and Com
     - [Prediction](#prediction)
     - [Evaluation](#evaluation)
 - [Testing](#testing)
+- [Assumptions and Limitations](#assumptions-and-limitations)
 - [References](#references)
 
 ## Survey
@@ -209,6 +210,21 @@ coverage erase
 coverage run --source=simulation,preprocessing,model,train,predict,plot -m pytest
 coverage report -m
 ```
+## Assumptions and Limitations
+
+This project is intentionally designed as a simplified and reproducible demonstration of a particle-track momentum reconstruction workflow rather than a complete detector simulation.
+
+The main assumptions and limitations are:
+
+- Particle motion is modeled in the transverse `(x, y)` plane under a uniform axial magnetic field.
+- Detector geometry is represented by concentric tracking layers rather than the full geometry of a specific experiment.
+- Measurement uncertainty is approximated using Gaussian spatial smearing, while missing hits are introduced through stochastic detector inefficiency.
+- The simulation does not model the complete set of physical effects present in a real tracking detector, such as detailed material interactions, multiple scattering, or energy loss.
+- The neural network reconstructs transverse momentum (`pT`) from simulated hit coordinates and is not intended as a validated reconstruction model for experimental data.
+- Missing detector hits are represented using a fixed padding value and masked before the data are passed through the neural network.
+- The prediction stage evaluates the held-out processed test set produced by the preprocessing pipeline; it is not intended as a general-purpose interface for arbitrary raw detector data.
+
+These simplifications keep the project computationally lightweight and allow the complete workflow to remain reproducible and independently testable.
 
 ## References
 <blockquote id="ref-1">[1] George Gollin Group. Research in high energy physics, primarily concerning the Mu2e experiment at Fermilab. https://hep.physics.illinois.edu/home/g-gollin/research/ </blockquote>
