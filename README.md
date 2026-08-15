@@ -1,7 +1,4 @@
 # Particle Track Momentum Reconstructor
-[![Tests](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml/badge.svg)](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml)
-This repository contains the software project developed for the Software and Computing exam of the M.Sc. in Applied Physics at the University of Bologna.
-# Particle Track Momentum Reconstructor
 
 [![Tests](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml/badge.svg)](https://github.com/Wafa-Mamaani/Particle-Momentum-Reconstructor/actions/workflows/tests.yml)
 
@@ -24,6 +21,7 @@ This repository contains the software project developed for the Software and Com
 - [Repository Contents](#repository-contents)
 - [Installation](#installation)
 - [Tutorial](#tutorial)
+    - [Command-Line Options](#command-line-options)
     - [Data Preparation & Preprocessing](#data-preparation--preprocessing)
     - [Training](#training)
     - [Prediction](#prediction)
