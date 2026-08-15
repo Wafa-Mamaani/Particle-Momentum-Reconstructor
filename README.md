@@ -105,6 +105,53 @@ https://pytorch.org/get-started/locally/
 The reconstruction pipeline is intended to be executed sequentially:
 simulation, preprocessing, training, prediction, and evaluation.
 
+### Command-Line Options
+
+Each stage can be configured from the command line without modifying the source code.
+
+#### Simulation
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--samples` | `10000` | Number of simulated particle tracks |
+| `--seed` | `13` | Random seed for reproducible simulation |
+| `--outdir` | `data_files/simulated_data` | Directory for the generated CSV file |
+
+#### Preprocessing
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--input` | `data_files/simulated_data/simulated_tracks.csv` | Input simulated-track CSV |
+| `--outdir` | `data_files/processed_data` | Directory for processed NumPy arrays |
+| `--seed` | `13` | Random seed used for data splitting |
+
+#### Training
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--data` | `data_files/processed_data` | Directory containing the processed arrays |
+| `--weights` | `weights` | Directory for saved model weights |
+| `--epochs` | `150` | Maximum number of training epochs |
+| `--batch` | `64` | Training batch size |
+| `--lr` | `0.001` | Adam optimizer learning rate |
+| `--patience` | `15` | Epochs without validation improvement before early stopping |
+| `--seed` | `13` | Random seed for reproducible training |
+
+#### Prediction
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--data` | `data_files/processed_data` | Directory containing the processed test data |
+| `--weights` | `weights/best_model.pth` | Path to the trained model weights |
+| `--outdir` | `results` | Directory for the prediction CSV |
+
+#### Evaluation
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--input` | `results/test_predictions.csv` | Prediction CSV to evaluate |
+| `--outdir` | `results/plots` | Directory for generated evaluation plots |
+
 ### Data Preparation & Preprocessing
 To provide a reproducible dataset without depending on experiment-specific simulation software or external data files, this project includes a self-contained toy Monte Carlo track generator.
 
