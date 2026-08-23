@@ -1,16 +1,18 @@
-import os
 import argparse
+import os
+
 import numpy as np
 import pandas as pd
+
 
 def generate_toy_tracks(
     num_samples: int,
     b_field: float = 1.0,
-    #36 simulated layers between the 0.38m dead-zone boundary and 0.7m outer boundary
     layers: list = np.linspace(0.385, 0.695, 36).tolist(),
     efficiency: float = 0.95,
     resolution: float = 0.001,
-    random_seed: int = 42) -> pd.DataFrame:
+    random_seed: int = 13,
+) -> pd.DataFrame:
     
     '''
     Simulates charged particle tracks in a uniform axial magnetic field.
@@ -24,6 +26,7 @@ def generate_toy_tracks(
         Magnetic field strength in Tesla.
     layers : list of float
         Radii of the concentric tracking layers in meters.
+        By default, 36 layers are placed between 0.385 m and 0.695 m.
     efficiency : float
         Probability [0, 1] that a valid intersection produces a recorded hit.
     resolution : float
@@ -34,15 +37,15 @@ def generate_toy_tracks(
     -------
     pd.DataFrame
         A rectangular dataframe containing the true pT and the (x, y) coordinates for each layer. Missing or dropped hits are padded with -9999.0.
-    '''
-    
+    ''' 
     if num_samples <= 0:
         raise ValueError('The number of samples must be a positive integer.')
+    
     if b_field <= 0:
         raise ValueError('The magnetic field strength must be positive.')
-
+    
     if not 0.0 <= efficiency <= 1.0:
-        raise ValueError('Efficiency must be between 0 and 1.')
+        raise ValueError('Efficiency must be between 0 and 1.')    
 
     if resolution < 0:
         raise ValueError('Resolution cannot be negative.')
@@ -57,88 +60,132 @@ def generate_toy_tracks(
     r_layers = np.array(layers)
     num_layers = len(r_layers)
 
-    #1. Sample Kinematics
-    #pT range chosen to produce a mix of curling and fully reconstructed tracks
+    # 1. Sample kinematics
+
+    # pT is sampled in MeV/c. The range gives a mix of curling
+    # and fully reconstructed tracks.
     pt_true = rng.uniform(65.0, 105.0, num_samples)
-    #Emission angle uniformly distributed in [0, 2pi)
+
+    # Emission angle uniformly distributed in [0, 2pi)
     alpha = rng.uniform(0, 2 * np.pi, num_samples)
-    #Only integer charges of ±1 are considered for simplicity (positrons and electrons)
+
+    # Only integer charges of ±1 are considered for simplicity (positrons and electrons)
     charge = rng.choice([-1, 1], num_samples)
 
-    #Radius of curvature from Lorentz force and circular motion
+    # Convert pT to GeV/c for the curvature relation.
     radius = (pt_true / 1000) / (0.3 * b_field)
 
-    #The center of the circular track lies at distance R from the origin, orthogonal to the initial momentum vector.
-    #Angle of the track center relative to the origin:
+    # The center of the circular track lies at distance R from the origin
+    # orthogonal to the initial momentum vector.
     phi_center = alpha + charge * (np.pi / 2)
 
-    #Initialize coordinate arrays filled with the sentinel padding value
+    # Initialize coordinate arrays filled with the sentinel padding value
     x_hits = np.full((num_samples, num_layers), -9999.0)
     y_hits = np.full((num_samples, num_layers), -9999.0)
 
-    #2. Calculate Exact Intersections
-    #For a track passing through the origin, the origin (O), the track center (C), and the hit intersection point (H) form an isosceles triangle with sides R, R, and r_layer.
+    # 2. Calculate Exact Intersections
+
+    # The origin, track center, and hit point form an isosceles triangle
+    # with sides R, R, and r_i.
     for i, r_i in enumerate(r_layers):
-        #Geometric acceptance: r_i must be <= 2R. If r_i > 2R, the track curls before the layer.
+        # If r_i > 2R, the track curls before reaching the layer.
         valid_geometry_mask = r_i <= (2 * radius)
-        #Calculate intersection angle only for tracks that reach this layer
+
         cos_beta = r_i / (2 * radius[valid_geometry_mask])
         beta = np.arccos(cos_beta)
-        #The angle of the intersection point from the origin is phi_center - beta. (subtracting beta aligns with the forward-time propagation of the particle).
-        theta_hit = phi_center[valid_geometry_mask] - charge[valid_geometry_mask] * beta
+
+        # The sign of beta selects the forward propagation direction of the particle.
+        theta_hit = (
+            phi_center[valid_geometry_mask]
+            - charge[valid_geometry_mask] * beta
+        )
         
-        #True intersection coordinates
         x_true = r_i * np.cos(theta_hit)
         y_true = r_i * np.sin(theta_hit)
         
-        #3. Apply Stochastic Inefficiency
-        #Randomly drop hits to simulate dead wires / gas fluctuations
+        # 3. Apply Stochastic Inefficiency
+
+        # Randomly drop hits to simulate detector inefficiency
         efficiency_roll = rng.random(np.sum(valid_geometry_mask))
         hit_recorded_mask = efficiency_roll < efficiency
         
-        #4. Apply Spatial Resolution (Smearing)
-        x_smeared = x_true[hit_recorded_mask] + rng.normal(0, resolution, np.sum(hit_recorded_mask))
-        y_smeared = y_true[hit_recorded_mask] + rng.normal(0, resolution, np.sum(hit_recorded_mask))
+        # 4. Apply Spatial Resolution (Smearing)
+
+        x_smeared = (
+            x_true[hit_recorded_mask] 
+            + rng.normal(0, resolution, np.sum(hit_recorded_mask))
+        )
+        y_smeared = (
+            y_true[hit_recorded_mask] 
+            + rng.normal(0, resolution, np.sum(hit_recorded_mask))
+        )
         
-        #Map the valid, recorded, smeared hits back to the global array indices
+        # Map the valid, recorded, smeared hits back to the global array indices
         global_indices = np.where(valid_geometry_mask)[0][hit_recorded_mask]
+
         x_hits[global_indices, i] = x_smeared
         y_hits[global_indices, i] = y_smeared
 
-    #5. Format as a Rectangular DataFrame
+    # 5. Format as a Rectangular DataFrame
+
     columns = ['pt_true']
     data_arrays = [pt_true.reshape(-1, 1)]
     
     for i in range(num_layers):
         columns.extend([f'hit_{i}_x', f'hit_{i}_y'])
-        data_arrays.append(x_hits[ : , i].reshape(-1, 1))
-        data_arrays.append(y_hits[ : , i].reshape(-1, 1))
+        data_arrays.append(x_hits[:, i].reshape(-1, 1))
+        data_arrays.append(y_hits[:, i].reshape(-1, 1))
         
     final_data = np.hstack(data_arrays)
-    df = pd.DataFrame(final_data, columns = columns)
+    df = pd.DataFrame(final_data, columns=columns)
     
     return df
 
-def main(): #pragma: no cover
+
+def main(): # pragma: no cover
     '''Command line interface for generating the dataset.'''
-    parser = argparse.ArgumentParser(description = 'Generate toy track data for momentum estimation.')
-    parser.add_argument('--samples', type = int, default = 10000, help = 'Number of tracks to generate.')
-    parser.add_argument('--seed', type = int, default = 13, help = 'Random seed for reproducibility.')
-    parser.add_argument('--outdir', type = str, default = 'data_files/simulated_data', help = 'Output directory for the CSV.')
+
+    parser = argparse.ArgumentParser(
+        description='Generate toy track data for momentum estimation.'
+        )
+    parser.add_argument(
+        '--samples', 
+        type=int, 
+        default=10000, 
+        help='Number of tracks to generate.'
+        )
+    parser.add_argument(
+        '--seed', 
+        type=int, 
+        default=13, 
+        help='Random seed for reproducibility.'
+        )
+    parser.add_argument(
+        '--outdir', 
+        type=str,
+        default='data_files/simulated_data',
+        help='Output directory for the CSV.'
+        )
 
     args = parser.parse_args()
     
     print(f'Generating {args.samples} simulated tracks...')
-    df = generate_toy_tracks(num_samples = args.samples, random_seed = args.seed)
-    
-    #Ensure output directory exists (I use relative path, instead of hardcoding some absolute path.)
-    os.makedirs(args.outdir, exist_ok = True)
-    outpath = os.path.join(args.outdir, 'simulated_tracks.csv')
-    
-    df.to_csv(outpath, index = False)
-    print(f'Dataset successfully saved to {outpath}')
 
-if __name__ == '__main__': #pragma: no cover
+    df = generate_toy_tracks(
+        num_samples=args.samples,
+        random_seed=args.seed
+        )
+    
+    os.makedirs(args.outdir, exist_ok=True)
+
+    outpath = os.path.join(args.outdir, 'simulated_tracks.csv')
+    df.to_csv(outpath, index=False)
+
+    print(f'Dataset successfully saved to {outpath}')
+    
+
+if __name__ == '__main__': # pragma: no cover
     main()
 
-#Property of Wafa Mamani. May 2026.
+
+# Property of Wafa Mamaani. May 2026.
