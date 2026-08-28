@@ -1,10 +1,12 @@
+import numpy as np
+import pandas as pd
 import torch
 
-from simulation import generate_toy_tracks
-from preprocessing import TrackPreprocessor
-from train import train_model
-from predict import run_inference
 from plot import plot_results
+from predict import run_inference
+from preprocessing import TrackPreprocessor
+from simulation import generate_toy_tracks
+from train import train_model
 
 
 def test_complete_reconstruction_pipeline(tmp_path, monkeypatch):
@@ -35,6 +37,7 @@ def test_complete_reconstruction_pipeline(tmp_path, monkeypatch):
         filepath=str(csv_path),
         random_state=13,
     )
+
     processor.run_pipeline(str(processed_dir))
 
     assert (processed_dir / 'X_train.npy').exists()
@@ -54,6 +57,7 @@ def test_complete_reconstruction_pipeline(tmp_path, monkeypatch):
     )
 
     weights_path = weights_dir / 'best_model.pth'
+
     assert weights_path.exists()
 
     # 4. Prediction
@@ -64,7 +68,22 @@ def test_complete_reconstruction_pipeline(tmp_path, monkeypatch):
     )
 
     predictions_path = results_dir / 'test_predictions.csv'
+
     assert predictions_path.exists()
+
+    results = pd.read_csv(predictions_path)
+    X_test = np.load(processed_dir / 'X_test.npy')
+
+    assert list(results.columns) == [
+        'pt_true_mev',
+        'pt_pred_mev',
+    ]
+    assert len(results) == X_test.shape[0]
+    assert np.all(
+        np.isfinite(
+            results[['pt_true_mev', 'pt_pred_mev']].to_numpy()
+        )
+    )
 
     # 5. Evaluation plots
     plot_results(
@@ -72,5 +91,11 @@ def test_complete_reconstruction_pipeline(tmp_path, monkeypatch):
         output_dir=str(plots_dir),
     )
 
-    assert (plots_dir / 'reconstruction_scatter.png').exists()
-    assert (plots_dir / 'error_residuals.png').exists()
+    scatter_path = plots_dir / 'reconstruction_scatter.png'
+    residuals_path = plots_dir / 'error_residuals.png'
+
+    assert scatter_path.exists()
+    assert residuals_path.exists()
+
+    assert scatter_path.stat().st_size > 0
+    assert residuals_path.stat().st_size > 0
