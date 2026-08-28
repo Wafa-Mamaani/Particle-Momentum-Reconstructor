@@ -73,6 +73,7 @@ The project is organized into separate modules for each stage of the reconstruct
 ├── requirements-dev.txt        # Testing and coverage dependencies
 └── README.md                   # Project documentation
 ```
+The `data_files/`, `weights/`, and `results/` directories are generated automatically when the pipeline is run and are not tracked by Git.
 
 ## Installation
 This project was tested with Python 3.12.2. Using a virtual environment is recommended to keep the project dependencies separate from other Python installations.
