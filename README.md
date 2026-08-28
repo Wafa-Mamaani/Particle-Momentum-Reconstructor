@@ -46,7 +46,7 @@ The simulated hit coordinates are preprocessed and used as inputs to a PyTorch m
 </a>
   
 ## Repository Contents
-The project is organized into decoupled modules to satisfy the "bus test" of software maintainability:
+The project is organized into separate modules for each stage of the reconstruction workflow:
 ```text
 ├── data_files/                 # Raw simulated CSVs and processed NumPy arrays
     ├── simulated_data
