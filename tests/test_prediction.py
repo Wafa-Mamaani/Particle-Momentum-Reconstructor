@@ -174,9 +174,53 @@ def test_prediction_infers_input_dimension_from_data(tmp_path):
         data_dir=str(data_dir),
         weights_path=str(weights_dir / 'best_model.pth'),
         output_dir=str(output_dir),
-)
+    )
 
     assert (output_dir / 'test_predictions.csv').exists()
+
+
+def test_run_inference_rejects_mismatched_row_counts(tmp_path):
+    '''Test features and targets must contain the same number of tracks.'''
+
+    data_dir = tmp_path / 'processed_data'
+    weights_dir = tmp_path / 'weights'
+    output_dir = tmp_path / 'results'
+
+    data_dir.mkdir()
+    weights_dir.mkdir()
+
+    np.save(
+        data_dir / 'X_test.npy',
+        np.zeros((3, 8), dtype=np.float32),
+    )
+    np.save(
+        data_dir / 'y_test.npy',
+        np.zeros((2, 1), dtype=np.float32),
+    )
+    np.savez(
+        data_dir / 'y_stats.npz',
+        y_mean=np.array([85.0]),
+        y_std=np.array([2.0]),
+    )
+
+    model = TrackMomentumRegressor(
+        input_dim=8,
+        pad_val=-9999.0,
+    )
+    torch.save(
+        model.state_dict(),
+        weights_dir / 'best_model.pth',
+    )
+
+    with pytest.raises(
+        ValueError,
+        match='same number of rows',
+    ):
+        run_inference(
+            data_dir=str(data_dir),
+            weights_path=str(weights_dir / 'best_model.pth'),
+            output_dir=str(output_dir),
+        )
 
 
 def test_run_inference_rejects_mismatched_feature_dimension(tmp_path):
