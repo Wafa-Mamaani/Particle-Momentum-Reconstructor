@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
 
-class TrackMomentumRegressor(nn.Module):
-    """
-    A lightweight Multi-Layer Perceptron (MLP) for predicting particle transverse
-    momentum (pT) from 2D spatial tracker hits.
 
-    This architecture handles variable-length tracks by explicitly masking padded
-    sentinel values before they propagate through the network.
-    """
+class TrackMomentumRegressor(nn.Module):
+    '''
+    A Multi-Layer Perceptron (MLP) for predicting particle transverse
+    momentum from 2D tracker hit coordinates.
+
+    Missing hits marked by the padding value are replaced with zero before
+    the input is passed through the network.
+    '''
 
     def __init__(self, input_dim: int = 72, pad_val: float = -9999.0):
         """
@@ -17,7 +18,8 @@ class TrackMomentumRegressor(nn.Module):
         Parameters
         ----------
         input_dim : int
-            The total number of spatial features (36 layers * 2 coordinates = 72).
+            Number of tracker-coordinate features given to the network.
+            The default detector layout produces 72 features.
         pad_val : float
             The sentinel value used to denote a missing or padded hit.
         """
@@ -31,7 +33,7 @@ class TrackMomentumRegressor(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(32, 1)
+            nn.Linear(32, 1),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -54,4 +56,4 @@ class TrackMomentumRegressor(nn.Module):
         return self.network(masked_x)
 
 
-# Property of Wafa Mamani. May 2026.
+# Property of Wafa Mamaani. May 2026.
