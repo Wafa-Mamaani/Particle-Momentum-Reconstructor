@@ -441,6 +441,14 @@ def test_train_model_infers_input_dimension_from_data(
 
     assert (weights_dir / 'best_model.pth').exists()
 
+    state_dict = torch.load(
+        weights_dir / 'best_model.pth',
+        map_location='cpu',
+        weights_only=True,
+    )
+
+    assert state_dict['network.0.weight'].shape[1] == 8
+
 
 def test_train_model_rejects_mismatched_feature_dimensions(tmp_path):
     """Check that training and validation feature dimensions match."""
