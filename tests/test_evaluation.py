@@ -60,6 +60,7 @@ def test_calculate_metrics_rejects_non_finite_values():
     ):
         calculate_metrics(y_true, y_pred)
 
+
 def test_plot_results_creates_expected_files(tmp_path):
     """Check that evaluation plots are written to the output directory."""
     csv_path = tmp_path / 'predictions.csv'
@@ -86,6 +87,26 @@ def test_plot_results_creates_expected_files(tmp_path):
 
     assert scatter_path.stat().st_size > 0
     assert residuals_path.stat().st_size > 0
+
+
+def test_plot_results_rejects_missing_prediction_columns(tmp_path):
+    '''The prediction CSV must contain both required momentum columns.'''
+
+    csv_path = tmp_path / 'predictions.csv'
+    output_dir = tmp_path / 'plots'
+
+    pd.DataFrame({
+        'pt_true_mev': [80.0, 85.0],
+    }).to_csv(csv_path, index=False)
+
+    with pytest.raises(
+        ValueError,
+        match='pt_true_mev and pt_pred_mev',
+    ):
+        plot_results(
+            csv_path=str(csv_path),
+            output_dir=str(output_dir),
+        )
 
 
 def test_plot_results_reports_missing_input_file(tmp_path):

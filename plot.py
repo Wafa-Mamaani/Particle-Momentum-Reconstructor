@@ -1,5 +1,5 @@
-import os
 import argparse
+import os
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
+
 
 def calculate_metrics(
     y_true: np.ndarray,
@@ -39,9 +40,12 @@ def calculate_metrics(
 
     return residuals, bias, standard_deviation, rmse
 
+
 def plot_results(csv_path: str, output_dir: str):
-    """Generates publication-ready visualizations of the model's predictive performance strictly from the pre-calculated results CSV."""
-    os.makedirs(output_dir, exist_ok = True)
+    '''
+    Creates prediction and residual plots from the saved test results.
+    '''
+    os.makedirs(output_dir, exist_ok=True)
 
     try:
         df = pd.read_csv(csv_path)
@@ -49,6 +53,13 @@ def plot_results(csv_path: str, output_dir: str):
         raise FileNotFoundError(
             f'Cannot find {csv_path}. Run predict.py first.'
         ) from exc
+
+    required_columns = {'pt_true_mev', 'pt_pred_mev'}
+
+    if not required_columns.issubset(df.columns):
+        raise ValueError(
+            'Prediction CSV must contain pt_true_mev and pt_pred_mev columns.'
+        )
 
     y_true = df['pt_true_mev'].to_numpy(dtype=float)
     y_pred = df['pt_pred_mev'].to_numpy(dtype=float)
@@ -58,45 +69,71 @@ def plot_results(csv_path: str, output_dir: str):
         y_pred,
     )
 
-    #Plot 1: True vs Predicted Momentum
-    plt.figure(figsize = (8, 8))
-    plt.scatter(y_true, y_pred, alpha = 0.5, s = 10, color = 'blue', label = 'Predicted Tracks')
+    # True versus predicted momentum
+    plt.figure(figsize=(8, 8))
+    plt.scatter(
+        y_true,
+        y_pred,
+        alpha=0.5,
+        s=10,
+        color='blue',
+        label='Predicted Tracks',
+    )
 
-    #Perfect prediction diagonal line
-    limits = [min(y_true.min(), y_pred.min()), max(y_true.max(), y_pred.max())]
-    plt.plot(limits, limits, color = 'red', linestyle = '--', label = 'Perfect Reconstruction')
+    # Perfect-prediction reference line
+    limits = [
+        min(y_true.min(), y_pred.min()),
+        max(y_true.max(), y_pred.max()),
+    ]
+    plt.plot(
+        limits,
+        limits,
+        color='red',
+        linestyle='--',
+        label='Perfect Reconstruction',
+    )
 
     plt.xlabel('True Transverse Momentum [MeV/c]')
     plt.ylabel('Predicted Transverse Momentum [MeV/c]')
     plt.title('Tracker Momentum Reconstruction Accuracy')
-    plt.plot([], [], ' ', label = f'RMSE: {rmse:.3f} MeV/c')
+    plt.plot([], [], ' ', label=f'RMSE: {rmse:.3f} MeV/c')
     plt.legend()
-    plt.grid(True, alpha = 0.3)
+    plt.grid(True, alpha=0.3)
 
-    scatter_path = os.path.join(output_dir, 'reconstruction_scatter.png')
-    plt.savefig(scatter_path, dpi = 300, bbox_inches = 'tight')
+    scatter_path = os.path.join(
+        output_dir,
+        'reconstruction_scatter.png',
+    )
+    plt.savefig(scatter_path, dpi=300, bbox_inches='tight')
     plt.close()
 
-    #Plot 2: Residuals Histogram
-    plt.figure(figsize = (10, 6))
-    plt.hist(residuals, bins = 50, color = 'purple', alpha = 0.7, edgecolor = 'black')
+    # Residual distribution
+    plt.figure(figsize=(10, 6))
+    plt.hist(
+        residuals,
+        bins=50,
+        color='purple',
+        alpha=0.7,
+        edgecolor='black',
+    )
 
     plt.xlabel('Momentum Residual (Predicted - True) [MeV/c]')
     plt.ylabel('Track Count')
     plt.title('Momentum Reconstruction Error Distribution')
-    plt.axvline(0, color = 'black', linestyle = 'dashed', linewidth = 2)
-    plt.plot([], [], ' ', label = f'Mean: {res_mean:.3f} MeV/c')
-    plt.plot([], [], ' ', label = f'Std Dev: {res_std:.3f} MeV/c')
+    plt.axvline(0, color='black', linestyle='dashed', linewidth=2)
+    plt.plot([], [], ' ', label=f'Mean: {res_mean:.3f} MeV/c')
+    plt.plot([], [], ' ', label=f'Std Dev: {res_std:.3f} MeV/c')
     plt.legend(loc='upper right')
-    plt.grid(True, alpha = 0.3)
+    plt.grid(True, alpha=0.3)
 
     hist_path = os.path.join(output_dir, 'error_residuals.png')
-    plt.savefig(hist_path, dpi = 300, bbox_inches = 'tight')
+    plt.savefig(hist_path, dpi=300, bbox_inches='tight')
     plt.close()
 
     print(f'Plots successfully generated and saved to {output_dir}/')
 
-def main():
+
+def main():  # pragma: no cover
     parser = argparse.ArgumentParser(
         description='Plot model evaluation results.'
     )
@@ -117,7 +154,7 @@ def main():
     plot_results(args.input, args.outdir)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     main()
 
-#Property of Wafa Mamani. May 2026.
+# Property of Wafa Mamaani. May 2026.
