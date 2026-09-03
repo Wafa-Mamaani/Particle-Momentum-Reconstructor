@@ -41,8 +41,8 @@ The simulated hit coordinates are preprocessed and used as inputs to a PyTorch m
 
 **Example of a straw-tube tracker:** Mu2e detector solenoid (DS) containing the stopping target, tracker and calorimeter, with charged particles passing through a non-zero magnetic field <sup>[<a href="#ref-1">1</a>]</sup>.
 
-<a href="https://github.com/user-attachments/assets/e5b85da3-a522-44b2-bbea-65e23e095cec">
-  <img src="https://github.com/user-attachments/assets/e5b85da3-a522-44b2-bbea-65e23e095cec" width="75%">
+<a href="images/Mu2eDiagramBig.png">
+  <img src="images/Mu2eDiagramBig.png" width="75%">
 </a>
   
 ## Repository Contents
@@ -63,6 +63,8 @@ The project is organized into separate modules for each stage of the reconstruct
 │   ├── test_simulation.py
 │   └── test_training.py
 ├── weights/                    # Saved model state dictionaries
+├── images/                     # Images used in the project documentation
+│   └── Mu2eDiagramBig.png     
 ├── model.py                    # PyTorch MLP architecture with masking logic
 ├── simulation.py               # MC-truth physics track generator
 ├── preprocessing.py            # Leakage-free scaling and data splitting
